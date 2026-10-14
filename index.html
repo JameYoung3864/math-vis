@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>研数视界 MathVis — 把考研数学"画"出来</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        ink: {
+          950: '#050816',
+          900: '#0a0f24',
+          800: '#0f1630',
+          700: '#151e3f',
+        },
+        brand: {
+          cyan: '#22d3ee',
+          indigo: '#6366f1',
+          violet: '#a78bfa',
+          pink: '#f472b6',
+          amber: '#fbbf24',
+          emerald: '#34d399',
+          rose: '#fb7185',
+        }
+      },
+      fontFamily: {
+        sans: ['"PingFang SC"','"Microsoft YaHei"','system-ui','sans-serif'],
+      },
+      boxShadow: {
+        glow: '0 0 24px rgba(34,211,238,0.25)',
+      }
+    }
+  }
+}
+</script>
+<style>
+  html,body{background:#050816;color:#e5e7eb;}
+  .card{background:linear-gradient(180deg,rgba(21,30,63,0.85),rgba(15,22,48,0.85));border:1px solid rgba(99,102,241,0.18);border-radius:16px;backdrop-filter:blur(6px);}
+  .chip{padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;}
+  .grad-text{background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .grid-bg{background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px);background-size:40px 40px;}
+  .ring-glow{box-shadow:0 0 0 1px rgba(34,211,238,0.4),0 0 16px rgba(34,211,238,0.25);}
+  .scrollbar-thin::-webkit-scrollbar{width:6px;height:6px;}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.4);border-radius:3px;}
+  .pulse-dot{animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</head>
+<body class="min-h-screen grid-bg">
+
+<!-- 顶部栏 -->
+<header class="sticky top-0 z-40 border-b border-indigo-500/20 bg-ink-950/80 backdrop-blur-md">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center gap-6">
+    <div class="flex items-center gap-2">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-cyan to-brand-indigo flex items-center justify-center shadow-glow">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19V5l8 6 8-6v14"/><path d="M4 19h16"/></svg>
+      </div>
+      <div>
+        <div class="text-base font-bold grad-text leading-tight">研数视界 MathVis</div>
+        <div class="text-[10px] text-indigo-300/70 leading-tight">把考研数学"画"出来</div>
+      </div>
+    </div>
+
+    <nav class="hidden md:flex items-center gap-1 text-sm text-gray-300 ml-4">
+      <a class="px-3 py-1.5 rounded-lg bg-indigo-500/15 text-white">首页</a>
+      <a class="px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">知识点</a>
+      <a class="px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">可视化实验</a>
+      <a class="px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">题库</a>
+      <a class="px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">错题本</a>
+      <a class="px-3 py-1.5 rounded-lg hover:bg-indigo-500/10">报告</a>
+    </nav>
+
+    <!-- 科目切换 -->
+    <div class="hidden lg:flex items-center rounded-lg bg-ink-800 border border-indigo-500/20 p-0.5">
+      <button onclick="switchSub(this,1)" class="sub-btn px-3 py-1 text-xs rounded-md bg-brand-indigo text-white">数学一</button>
+      <button onclick="switchSub(this,2)" class="sub-btn px-3 py-1 text-xs rounded-md text-gray-400 hover:text-white">数学二</button>
+      <button onclick="switchSub(this,3)" class="sub-btn px-3 py-1 text-xs rounded-md text-gray-400 hover:text-white">数学三</button>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <!-- 倒计时 -->
+    <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-rose-500/15 to-amber-500/10 border border-rose-400/30">
+      <div class="w-2 h-2 rounded-full bg-brand-rose pulse-dot"></div>
+      <span class="text-xs text-gray-300">距离考研</span>
+      <span id="countdown" class="text-sm font-bold grad-text">-- 天</span>
+    </div>
+
+    <!-- 搜索 -->
+    <div class="hidden sm:flex items-center gap-2 px-3 h-9 rounded-lg bg-ink-800 border border-indigo-500/20 w-60">
+      <svg viewBox="0 0 24 24" class="w-4 h-4 text-indigo-300/70" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input placeholder="搜知识点 / 公式 / 题目" class="bg-transparent outline-none text-sm w-full text-gray-200 placeholder:text-gray-500" />
+    </div>
+
+    <!-- 设置 -->
+    <button class="w-9 h-9 rounded-lg bg-ink-800 border border-indigo-500/20 flex items-center justify-center text-indigo-300 hover:text-white">
+      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+
+    <!-- 头像 -->
+    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-violet to-brand-pink flex items-center justify-center font-bold text-sm ring-glow">小</div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+  <!-- Slogan + 今日问候 -->
+  <section class="card p-6 relative overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-60 h-60 rounded-full bg-indigo-500/20 blur-3xl"></div>
+    <div class="absolute -bottom-10 -left-10 w-60 h-60 rounded-full bg-cyan-500/15 blur-3xl"></div>
+    <div class="relative">
+      <div class="text-xs text-indigo-300/80 mb-1">今日 · 周一</div>
+      <h1 class="text-2xl md:text-3xl font-bold">
+        你好，小同学 👋 今天也要<span class="grad-text">把数学画出来</span>
+      </h1>
+      <p class="text-sm text-gray-400 mt-1">
+        进度条：高数 68% · 线代 52% · 概率 41% &nbsp;·&nbsp; 上次学习 3 小时前 · 连续打卡 <span class="text-brand-amber font-semibold">27 天</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- 今日任务卡 -->
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-base font-semibold flex items-center gap-2">
+        <span class="w-1 h-4 bg-gradient-to-b from-brand-cyan to-brand-indigo rounded"></span>今日任务
+      </h2>
+      <span class="text-xs text-gray-400">自动根据你的薄弱项生成</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- 可视化 -->
+      <div class="card p-5 relative overflow-hidden group hover:-translate-y-0.5 transition">
+        <div class="absolute right-3 top-3 text-[10px] chip bg-cyan-500/15 text-brand-cyan">重点</div>
+        <div class="flex items-center justify-center h-24 rounded-lg bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 border border-cyan-500/20 mb-3">
+          <svg viewBox="0 0 200 80" class="w-full h-20">
+            <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity="0.7"/><stop offset="1" stop-color="#6366f1" stop-opacity="0.1"/></linearGradient></defs>
+            <path d="M0,60 Q40,10 80,40 T160,20 T200,50 L200,80 L0,80 Z" fill="url(#g1)"/>
+            <path d="M0,60 Q40,10 80,40 T160,20 T200,50" stroke="#22d3ee" fill="none" stroke-width="2"/>
+            <g stroke="#6366f1" stroke-width="1" opacity="0.7">
+              <line x1="10" y1="60" x2="10" y2="75"/><line x1="25" y1="55" x2="25" y2="75"/><line x1="40" y1="30" x2="40" y2="75"/><line x1="55" y1="20" x2="55" y2="75"/><line x1="70" y1="30" x2="70" y2="75"/>
+            </g>
+          </svg>
+        </div>
+        <div class="text-sm font-semibold">定积分：黎曼和 → 旋转体体积</div>
+        <div class="text-xs text-gray-400 mt-1">拖动滑块看 n 从 4 到 200 的收敛过程</div>
+        <button class="mt-3 text-xs px-3 py-1.5 rounded-md bg-cyan-500/15 text-brand-cyan hover:bg-cyan-500/25">开始可视化 →</button>
+      </div>
+
+      <!-- 公式 -->
+      <div class="card p-5 hover:-translate-y-0.5 transition">
+        <div class="flex items-center justify-center h-24 rounded-lg bg-gradient-to-br from-violet-500/10 to-pink-500/10 border border-violet-500/20 mb-3">
+          <div class="text-center text-violet-200">
+            <div class="text-xs text-violet-300/80 mb-1">泰勒展开 · 常用 8 个</div>
+            <div class="font-mono text-sm leading-tight">
+              eˣ = Σ xⁿ/n!<br/>
+              ln(1+x) = Σ (-1)ⁿ⁺¹xⁿ/n
+            </div>
+          </div>
+        </div>
+        <div class="text-sm font-semibold">公式卡片复习</div>
+        <div class="text-xs text-gray-400 mt-1">今日目标 · 8 个常用泰勒展开</div>
+        <div class="mt-3 flex items-center gap-2">
+          <div class="flex-1 h-1.5 rounded-full bg-ink-700 overflow-hidden"><div class="h-full w-3/5 bg-gradient-to-r from-brand-violet to-brand-pink"></div></div>
+          <span class="text-xs text-gray-400">5/8</span>
+        </div>
+      </div>
+
+      <!-- 刷题 -->
+      <div class="card p-5 hover:-translate-y-0.5 transition">
+        <div class="flex items-center justify-center h-24 rounded-lg bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 mb-3">
+          <div class="grid grid-cols-5 gap-1">
+            <div class="w-5 h-5 rounded bg-emerald-500/60"></div><div class="w-5 h-5 rounded bg-emerald-500/60"></div>
+            <div class="w-5 h-5 rounded bg-emerald-500/60"></div><div class="w-5 h-5 rounded bg-emerald-500/30"></div>
+            <div class="w-5 h-5 rounded bg-emerald-500/60"></div><div class="w-5 h-5 rounded bg-emerald-500/60"></div>
+            <div class="w-5 h-5 rounded bg-emerald-500/60"></div><div class="w-5 h-5 rounded bg-emerald-500/60"></div>
+            <div class="w-5 h-5 rounded bg-emerald-500/30"></div><div class="w-5 h-5 rounded bg-emerald-500/60"></div>
+          </div>
+        </div>
+        <div class="text-sm font-semibold">刷题 · 多元微分</div>
+        <div class="text-xs text-gray-400 mt-1">共 10 题 · 预计 25 分钟</div>
+        <button class="mt-3 text-xs px-3 py-1.5 rounded-md bg-emerald-500/15 text-brand-emerald hover:bg-emerald-500/25">开始刷题 →</button>
+      </div>
+
+      <!-- 错题 -->
+      <div class="card p-5 hover:-translate-y-0.5 transition">
+        <div class="flex items-center justify-center h-24 rounded-lg bg-gradient-to-br from-rose-500/10 to-amber-500/10 border border-rose-500/20 mb-3">
+          <svg viewBox="0 0 100 60" class="w-full h-20">
+            <g stroke="#fb7185" stroke-width="2" fill="none">
+              <circle cx="30" cy="30" r="14"/><circle cx="70" cy="30" r="14"/>
+              <line x1="44" y1="30" x2="56" y2="30"/>
+              <path d="M22 22 l4 4 M26 22 l-4 4" stroke-width="2.5"/>
+              <path d="M62 22 l4 4 M66 22 l-4 4" stroke-width="2.5"/>
+            </g>
+            <text x="50" y="55" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="600">相似 ≠ 合同</text>
+          </svg>
+        </div>
+        <div class="text-sm font-semibold">错题复习 · 特征值与相似</div>
+        <div class="text-xs text-gray-400 mt-1">5 题待复习 · 相似对角化易错点</div>
+        <button class="mt-3 text-xs px-3 py-1.5 rounded-md bg-rose-500/15 text-brand-rose hover:bg-rose-500/25">开始复习 →</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- 三科掌握度雷达图 -->
+    <section class="card p-5 lg:col-span-1">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-base font-semibold flex items-center gap-2">
+          <span class="w-1 h-4 bg-gradient-to-b from-brand-cyan to-brand-indigo rounded"></span>三科掌握度
+        </h2>
+        <div class="text-[11px] text-gray-400">
+          <span class="inline-block w-2 h-2 rounded-sm bg-brand-cyan align-middle mr-1"></span>高数
+          <span class="inline-block w-2 h-2 rounded-sm bg-brand-violet align-middle mr-1 ml-2"></span>线代
+          <span class="inline-block w-2 h-2 rounded-sm bg-brand-amber align-middle mr-1 ml-2"></span>概率
+        </div>
+      </div>
+      <div class="h-60 flex items-center justify-center">
+        <canvas id="radar"></canvas>
+      </div>
+      <div class="grid grid-cols-4 gap-2 mt-3 text-center text-[11px]">
+        <div class="p-2 rounded-md bg-ink-800/70 border border-indigo-500/10"><div class="text-gray-400">未学</div><div class="font-semibold text-brand-rose">12</div></div>
+        <div class="p-2 rounded-md bg-ink-800/70 border border-indigo-500/10"><div class="text-gray-400">学习中</div><div class="font-semibold text-brand-amber">18</div></div>
+        <div class="p-2 rounded-md bg-ink-800/70 border border-indigo-500/10"><div class="text-gray-400">薄弱</div><div class="font-semibold text-brand-pink">7</div></div>
+        <div class="p-2 rounded-md bg-ink-800/70 border border-indigo-500/10"><div class="text-gray-400">掌握</div><div class="font-semibold text-brand-emerald">23</div></div>
+      </div>
+    </section>
+
+    <!-- 继续学习 / 最近错题 / 推荐动画 -->
+    <section class="lg:col-span-2 space-y-6">
+      <!-- 标签切换 -->
+      <div class="card p-5">
+        <div class="flex items-center gap-1 mb-4">
+          <button onclick="tabSwitch('recent',this)" class="tab-btn px-3 py-1.5 rounded-md text-xs bg-indigo-500/15 text-white">最近知识点</button>
+          <button onclick="tabSwitch('wrong',this)" class="tab-btn px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white">最近错题</button>
+          <button onclick="tabSwitch('anim',this)" class="tab-btn px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white">推荐动画</button>
+        </div>
+
+        <!-- 最近知识点 -->
+        <div id="tab-recent" class="space-y-2">
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-ink-800/50 hover:bg-ink-800 cursor-pointer">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/30 to-indigo-500/30 flex items-center justify-center text-brand-cyan font-mono">∂</div>
+            <div class="flex-1">
+              <div class="text-sm font-medium">多元复合函数求偏导 · 链式法则</div>
+              <div class="text-xs text-gray-400">学习 25 分钟 · 掌握度 60%</div>
+            </div>
+            <span class="chip bg-amber-500/15 text-brand-amber">学习中</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-ink-800/50 hover:bg-ink-800 cursor-pointer">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500/30 to-pink-500/30 flex items-center justify-center text-brand-violet font-mono">λ</div>
+            <div class="flex-1">
+              <div class="text-sm font-medium">矩阵特征值与特征向量</div>
+              <div class="text-xs text-gray-400">学习 40 分钟 · 掌握度 45%</div>
+            </div>
+            <span class="chip bg-rose-500/15 text-brand-rose">薄弱</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-ink-800/50 hover:bg-ink-800 cursor-pointer">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 flex items-center justify-center text-brand-emerald font-mono">σ</div>
+            <div class="flex-1">
+              <div class="text-sm font-medium">二维随机变量 · 边缘与条件分布</div>
+              <div class="text-xs text-gray-400">学习 30 分钟 · 掌握度 55%</div>
+            </div>
+            <span class="chip bg-amber-500/15 text-brand-amber">学习中</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-ink-800/50 hover:bg-ink-800 cursor-pointer">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/30 to-violet-500/30 flex items-center justify-center text-brand-indigo font-mono">f</div>
+            <div class="flex-1">
+              <div class="text-sm font-medium">定积分计算 · 换元与分部积分</div>
+              <div class="text-xs text-gray-400">复习 15 分钟 · 掌握度 85%</div>
+            </div>
+            <span class="chip bg-emerald-500/15 text-brand-emerald">掌握</span>
+          </div>
+        </div>
+
+        <!-- 最近错题 -->
+        <div id="tab-wrong" class="hidden space-y-2">
+          <div class="p-3 rounded-lg bg-ink-800/50 border-l-2 border-brand-rose">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-medium">设 A 为 3 阶矩阵，|A|=2，则 |A*| = ?</div>
+              <span class="chip bg-rose-500/15 text-brand-rose">线代 · 10.12</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">错因：A* 公式记错，应为 |A|ⁿ⁻¹ 而非 n|A|</div>
+          </div>
+          <div class="p-3 rounded-lg bg-ink-800/50 border-l-2 border-brand-rose">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-medium">交换积分次序：∫₀¹∫₀^√y ... dxdy</div>
+              <span class="chip bg-rose-500/15 text-brand-rose">高数 · 10.11</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">错因：累次积分换限时上下限搞反</div>
+          </div>
+          <div class="p-3 rounded-lg bg-ink-800/50 border-l-2 border-brand-rose">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-medium">X ~ B(100,0.2)，用中心极限定理求 P(X≤20)</div>
+              <span class="chip bg-rose-500/15 text-brand-rose">概率 · 10.10</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">错因：连续性修正忘记 ±0.5</div>
+          </div>
+          <div class="p-3 rounded-lg bg-ink-800/50 border-l-2 border-brand-rose">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-medium">f(x,y) 可微的充分条件是？</div>
+              <span class="chip bg-rose-500/15 text-brand-rose">高数 · 10.09</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">错因：偏导连续 ⇒ 可微，反之不成立</div>
+          </div>
+        </div>
+
+        <!-- 推荐动画 -->
+        <div id="tab-anim" class="hidden grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-ink-800/50 p-3 border border-indigo-500/15 hover:border-brand-cyan/40 cursor-pointer">
+            <div class="h-20 rounded bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 flex items-center justify-center">
+              <div class="text-brand-cyan text-2xl">🎬</div>
+            </div>
+            <div class="text-sm font-medium mt-2">欧拉公式的几何意义</div>
+            <div class="text-xs text-gray-400">3 分钟 · 直观理解 e^(iθ)</div>
+          </div>
+          <div class="rounded-lg bg-ink-800/50 p-3 border border-indigo-500/15 hover:border-brand-violet/40 cursor-pointer">
+            <div class="h-20 rounded bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
+              <div class="text-brand-violet text-2xl">🎬</div>
+            </div>
+            <div class="text-sm font-medium mt-2">特征值如何拉伸空间</div>
+            <div class="text-xs text-gray-400">4 分钟 · 动画演示线性变换</div>
+          </div>
+          <div class="rounded-lg bg-ink-800/50 p-3 border border-indigo-500/15 hover:border-brand-amber/40 cursor-pointer">
+            <div class="h-20 rounded bg-gradient-to-br from-amber-500/20 to-rose-500/20 flex items-center justify-center">
+              <div class="text-brand-amber text-2xl">🎬</div>
+            </div>
+            <div class="text-sm font-medium mt-2">中心极限定理的 1000 次抛硬币</div>
+            <div class="text-xs text-gray-400">5 分钟 · 看分布如何逼近正态</div>
+          </div>
+          <div class="rounded-lg bg-ink-800/50 p-3 border border-indigo-500/15 hover:border-brand-emerald/40 cursor-pointer">
+            <div class="h-20 rounded bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
+              <div class="text-brand-emerald text-2xl">🎬</div>
+            </div>
+            <div class="text-sm font-medium mt-2">二重积分的切片法</div>
+            <div class="text-xs text-gray-400">4 分钟 · 柱体体积的两种切法</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 每日一题 -->
+  <section class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold flex items-center gap-2">
+        <span class="w-1 h-4 bg-gradient-to-b from-brand-cyan to-brand-indigo rounded"></span>每日一题
+        <span class="text-[11px] chip bg-cyan-500/15 text-brand-cyan">10月14日 · 高数</span>
+      </h2>
+      <div class="flex items-center gap-1 text-xs text-gray-400">
+        <button class="chip bg-ink-800 text-gray-300 hover:text-white">选择题</button>
+        <button class="chip bg-ink-800 text-gray-300 hover:text-white">填空题</button>
+        <button class="chip bg-indigo-500/15 text-white">解答题</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- 题目 -->
+      <div class="lg:col-span-3">
+        <div class="p-4 rounded-lg bg-ink-800/50 border border-indigo-500/15 text-sm leading-7">
+          <div class="text-gray-200">
+            设函数 <span class="font-mono text-brand-cyan">f(x)</span> 在 <span class="font-mono text-brand-cyan">x = 0</span> 处连续，且
+            <span class="block my-2 text-center font-mono text-indigo-200">
+              lim<sub>x→0</sub> f(x) / x = 2
+            </span>
+            则曲线 <span class="font-mono text-brand-cyan">y = f(x)</span> 在点 <span class="font-mono text-brand-cyan">(0, f(0))</span> 处的切线方程为 <span class="text-brand-amber">______</span>。
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button onclick="selectOpt(this,'A')" class="opt-btn text-left p-3 rounded-lg bg-ink-800/50 border border-indigo-500/15 hover:border-brand-cyan/50 text-sm">
+            <span class="inline-block w-6 h-6 rounded bg-indigo-500/20 text-center text-xs leading-6 mr-2">A</span>y = x
+          </button>
+          <button onclick="selectOpt(this,'B')" class="opt-btn text-left p-3 rounded-lg bg-ink-800/50 border border-indigo-500/15 hover:border-brand-cyan/50 text-sm">
+            <span class="inline-block w-6 h-6 rounded bg-indigo-500/20 text-center text-xs leading-6 mr-2">B</span>y = 2x
+          </button>
+          <button onclick="selectOpt(this,'C')" class="opt-btn text-left p-3 rounded-lg bg-ink-800/50 border border-indigo-500/15 hover:border-brand-cyan/50 text-sm">
+            <span class="inline-block w-6 h-6 rounded bg-indigo-500/20 text-center text-xs leading-6 mr-2">C</span>y = 2x + 1
+          </button>
+          <button onclick="selectOpt(this,'D')" class="opt-btn text-left p-3 rounded-lg bg-ink-800/50 border border-indigo-500/15 hover:border-brand-cyan/50 text-sm">
+            <span class="inline-block w-6 h-6 rounded bg-indigo-500/20 text-center text-xs leading-6 mr-2">D</span>y = x + 2
+          </button>
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button onclick="submitDaily()" class="px-4 py-2 rounded-md bg-gradient-to-r from-brand-cyan to-brand-indigo text-sm font-semibold shadow-glow hover:opacity-90">提交答案</button>
+          <button class="px-4 py-2 rounded-md bg-ink-800 border border-indigo-500/20 text-sm text-gray-300 hover:text-white">收藏</button>
+          <button class="px-4 py-2 rounded-md bg-ink-800 border border-indigo-500/20 text-sm text-gray-300 hover:text-white">下一题 →</button>
+        </div>
+      </div>
+
+      <!-- 解析面板 -->
+      <div id="daily-explain" class="lg:col-span-2 hidden">
+        <div id="daily-result" class="p-4 rounded-lg text-sm"></div>
+
+        <div class="mt-3 space-y-3">
+          <details open class="rounded-lg bg-ink-800/50 border border-indigo-500/15 text-sm">
+            <summary class="cursor-pointer p-3 font-medium text-brand-cyan">📝 解题步骤</summary>
+            <div class="px-3 pb-3 text-gray-300 space-y-2 leading-7">
+              <div><span class="text-indigo-300">Step 1 ·</span> 由 <span class="font-mono">lim<sub>x→0</sub> f(x)/x = 2</span> 及 <span class="font-mono">f</span> 在 0 处连续，得 <span class="font-mono text-brand-cyan">f(0) = 0</span>。</div>
+              <div><span class="text-indigo-300">Step 2 ·</span> 由导数定义 <span class="font-mono">f'(0) = lim<sub>x→0</sub> [f(x)-f(0)]/(x-0) = lim<sub>x→0</sub> f(x)/x = 2</span>。</div>
+              <div><span class="text-indigo-300">Step 3 ·</span> 切线方程：<span class="font-mono text-brand-emerald">y - 0 = 2(x - 0) ⇒ y = 2x</span>。</div>
+            </div>
+          </details>
+
+          <details class="rounded-lg bg-ink-800/50 border border-indigo-500/15 text-sm">
+            <summary class="cursor-pointer p-3 font-medium text-brand-violet">🎯 考点</summary>
+            <div class="px-3 pb-3 text-gray-300 text-xs space-y-1">
+              <div class="chip bg-indigo-500/20 text-brand-violet">极限与连续性</div>
+              <div class="chip bg-indigo-500/20 text-brand-violet">导数定义</div>
+              <div class="chip bg-indigo-500/20 text-brand-violet">几何应用 · 切线</div>
+            </div>
+          </details>
+
+          <details class="rounded-lg bg-ink-800/50 border border-indigo-500/15 text-sm">
+            <summary class="cursor-pointer p-3 font-medium text-brand-amber">🔁 同类题推荐（3）</summary>
+            <div class="px-3 pb-3 text-gray-300 text-xs space-y-2">
+              <div class="flex justify-between hover:text-white cursor-pointer"><span>1. 2022 数二 · T15</span><span class="text-gray-500">→</span></div>
+              <div class="flex justify-between hover:text-white cursor-pointer"><span>2. 2020 数一 · T04</span><span class="text-gray-500">→</span></div>
+              <div class="flex justify-between hover:text-white cursor-pointer"><span>3. 李林六套卷 · T02</span><span class="text-gray-500">→</span></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 本周报告 + 推荐实验 -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <!-- 本周报告 -->
+    <section class="card p-5 lg:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-semibold flex items-center gap-2">
+          <span class="w-1 h-4 bg-gradient-to-b from-brand-cyan to-brand-indigo rounded"></span>本周报告
+        </h2>
+        <span class="text-[11px] text-gray-400">10.08 — 10.14</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="p-3 rounded-lg bg-gradient-to-br from-cyan-500/15 to-indigo-500/5 border border-cyan-500/20">
+          <div class="text-[11px] text-gray-400">学习时长</div>
+          <div class="text-2xl font-bold grad-text">28.5<span class="text-sm ml-1 text-gray-400">h</span></div>
+          <div class="text-[11px] text-brand-emerald">↑ 12% vs 上周</div>
+        </div>
+        <div class="p-3 rounded-lg bg-gradient-to-br from-violet-500/15 to-pink-500/5 border border-violet-500/20">
+          <div class="text-[11px] text-gray-400">做题量</div>
+          <div class="text-2xl font-bold text-brand-violet">142<span class="text-sm ml-1 text-gray-400">题</span></div>
+          <div class="text-[11px] text-brand-emerald">↑ 8%</div>
+        </div>
+        <div class="p-3 rounded-lg bg-gradient-to-br from-emerald-500/15 to-cyan-500/5 border border-emerald-500/20">
+          <div class="text-[11px] text-gray-400">正确率</div>
+          <div class="text-2xl font-bold text-brand-emerald">76<span class="text-sm ml-1 text-gray-400">%</span></div>
+          <div class="text-[11px] text-brand-emerald">↑ 4%</div>
+        </div>
+        <div class="p-3 rounded-lg bg-gradient-to-br from-rose-500/15 to-amber-500/5 border border-rose-500/20">
+          <div class="text-[11px] text-gray-400">计算错误率</div>
+          <div class="text-2xl font-bold text-brand-rose">18<span class="text-sm ml-1 text-gray-400">%</span></div>
+          <div class="text-[11px] text-brand-emerald">↓ 3%</div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <div class="text-xs text-gray-400 mb-2">每日学习时长</div>
+        <canvas id="weekBar" height="90"></canvas>
+      </div>
+
+      <div>
+        <div class="text-xs text-gray-400 mb-2">薄弱知识点 Top 5</div>
+        <div class="space-y-2">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>二重积分换序</span><span class="text-brand-rose">错 7 次</span></div>
+            <div class="h-1.5 rounded-full bg-ink-700 overflow-hidden"><div class="h-full w-[78%] bg-gradient-to-r from-brand-rose to-brand-amber"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>特征值与相似对角化</span><span class="text-brand-rose">错 6 次</span></div>
+            <div class="h-1.5 rounded-full bg-ink-700 overflow-hidden"><div class="h-full w-[68%] bg-gradient-to-r from-brand-rose to-brand-amber"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>中心极限定理应用</span><span class="text-brand-amber">错 5 次</span></div>
+            <div class="h-1.5 rounded-full bg-ink-700 overflow-hidden"><div class="h-full w-[58%] bg-gradient-to-r from-brand-amber to-brand-violet"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>级数敛散性判别</span><span class="text-brand-amber">错 4 次</span></div>
+            <div class="h-1.5 rounded-full bg-ink-700 overflow-hidden"><div class="h-full w-[45%] bg-gradient-to-r from-brand-amber to-brand-violet"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>多元复合函数偏导</span><span class="text-brand-amber">错 3 次</span></div>
+            <div class="h-1.5 rounded-full bg-ink-700 overflow-hidden"><div class="h-full w-[32%] bg-gradient-to-r from-brand-amber to-brand-violet"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 推荐实验 -->
+    <section class="card p-5 lg:col-span-3">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-semibold flex items-center gap-2">
+          <span class="w-1 h-4 bg-gradient-to-b from-brand-cyan to-brand-indigo rounded"></span>推荐可视化实验
+        </h2>
+        <span class="text-[11px] text-gray-400">动手调一调，胜过看十遍</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- 正态分布 -->
+        <div class="rounded-xl bg-gradient-to-br from-rose-500/10 via-ink-800/50 to-amber-500/10 border border-rose-400/20 p-4 hover:-translate-y-0.5 transition cursor-pointer group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="chip bg-rose-500/20 text-brand-rose">概率 · 交互式</span>
+            <span class="text-xs text-gray-500 group-hover:text-white">▶ 打开</span>
+          </div>
+          <div class="h-24 rounded-lg bg-ink-900/60 flex items-end justify-center gap-0.5 px-2 py-2">
+            <svg viewBox="0 0 200 80" class="w-full h-full">
+              <path d="M0,70 C30,70 40,20 60,20 C80,20 90,65 100,70 C110,75 120,30 140,30 C160,30 170,60 200,60" fill="none" stroke="#fb7185" stroke-width="2" opacity="0.7"/>
+              <path d="M0,70 C40,70 50,40 80,40 C110,40 120,70 150,70 C170,70 180,60 200,60" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.9"/>
+            </svg>
+          </div>
+          <div class="text-sm font-semibold mt-3">用滑块看正态分布参数变化</div>
+          <div class="text-xs text-gray-400 mt-1">拖动 μ、σ，实时观察密度曲线如何平移与变陡</div>
+        </div>
+
+        <!-- 线性变换 -->
+        <div class="rounded-xl bg-gradient-to-br from-violet-500/10 via-ink-800/50 to-indigo-500/10 border border-violet-400/20 p-4 hover:-translate-y-0.5 transition cursor-pointer group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="chip bg-violet-500/20 text-brand-violet">线代 · 交互式</span>
+            <span class="text-xs text-gray-500 group-hover:text-white">▶ 打开</span>
+          </div>
+          <div class="h-24 rounded-lg bg-ink-900/60 flex items-center justify-center">
+            <svg viewBox="0 0 100 80" class="w-full h-full">
+              <g stroke="#a78bfa" stroke-width="1" fill="none" opacity="0.4">
+                <line x1="5" y1="70" x2="95" y2="70"/><line x1="50" y1="5" x2="50" y2="75"/>
+              </g>
+              <polygon points="30,60 60,60 60,30 30,30" fill="none" stroke="#a78bfa" stroke-width="1.5"/>
+              <polygon points="35,62 75,55 65,20 25,27" fill="rgba(167,139,250,0.25)" stroke="#f472b6" stroke-width="1.5"/>
+              <g fill="#f472b6">
+                <circle cx="30" cy="60" r="2"/><circle cx="60" cy="30" r="2"/>
+              </g>
+              <text x="80" y="18" font-size="8" fill="#f472b6">A·□</text>
+            </svg>
+          </div>
+          <div class="text-sm font-semibold mt-3">拖动矩阵看线性变换</div>
+          <div class="text-xs text-gray-400 mt-1">修改 2×2 矩阵元素，观察单位正方形如何被拉伸、旋转、剪切</div>
+        </div>
+
+        <!-- 中心极限 -->
+        <div class="rounded-xl bg-gradient-to-br from-cyan-500/10 via-ink-800/50 to-emerald-500/10 border border-cyan-400/20 p-4 hover:-translate-y-0.5 transition cursor-pointer group">
+          <div class="flex items-center justify-between mb-3">
+            <span class="chip bg-cyan-500/20 text-brand-cyan">概率 · 交互式</span>
+            <span class="text-xs text-gray-500 group-hover:text-white">▶ 打开</span>
+          </div>
+          <div class="h-24 rounded-lg bg-ink-900/60 flex items-end justify-center gap-0.5 px-2 py-2">
+            <svg viewBox="0 0 200 80" class="w-full h-full">
+              <g fill="#22d3ee" opacity="0.7">
+                <rect x="20" y="60" width="8" height="10"/><rect x="32" y="50" width="8" height="20"/>
+                <rect x="44" y="40" width="8" height="30"/><rect x="56" y="30" width="8" height="40"/>
+                <rect x="68" y="18" width="8" height="52"/><rect x="80" y="12" width="8" height="58"/>
+                <rect x="92" y="12" width="8" height="58"/><rect x="104" y="18" width="8" height="52"/>
+                <rect x="116" y="28" width="8" height="42"/><rect x="128" y="38" width="8" height="32"/>
+                <rect x="140" y="48" width="8" height="22"/><rect x="152" y="56" width="8" height="14"/>
+              </g>
+              <path d="M16,70 Q100,8 184,70" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="3 3"/>
+            </svg>
+          </div>
+          <div class="text-sm font-semibold mt-3">观察中心极限定理如何逼近正态</div>
+          <div class="text-xs text-gray-400 mt-1">不断累加均匀分布样本，看直方图如何"长出"钟形曲线</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="text-center text-xs text-gray-500 pt-4 pb-8">
+    © 研数视界 MathVis · 把考研数学"画"出来 · 为 2027 考研加油 🚀
+  </footer>
+</main>
+
+<script>
+  // 倒计时（假设 2026 考研日为 12 月 21 日）
+  (function(){
+    const target = new Date('2026-12-21T08:30:00').getTime();
+    const tick = () => {
+      const diff = Math.max(0, Math.ceil((target - Date.now()) / 86400000));
+      const el = document.getElementById('countdown');
+      if(el) el.textContent = diff + ' 天';
+    };
+    tick();
+    setInterval(tick, 3600000);
+  })();
+
+  // 科目切换
+  function switchSub(btn, n){
+    document.querySelectorAll('.sub-btn').forEach(b=>{
+      b.classList.remove('bg-brand-indigo','text-white');
+      b.classList.add('text-gray-400');
+    });
+    btn.classList.add('bg-brand-indigo','text-white');
+    btn.classList.remove('text-gray-400');
+  }
+
+  // Tab 切换
+  function tabSwitch(name, btn){
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      b.classList.remove('bg-indigo-500/15','text-white');
+      b.classList.add('text-gray-400');
+    });
+    btn.classList.add('bg-indigo-500/15','text-white');
+    btn.classList.remove('text-gray-400');
+    ['recent','wrong','anim'].forEach(t=>{
+      document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
+    });
+  }
+
+  let selectedOpt = null;
+  const CORRECT_OPT = 'B';
+
+  function selectOpt(btn, letter){
+    selectedOpt = letter;
+    document.querySelectorAll('.opt-btn').forEach(b=>{
+      b.classList.remove('border-brand-cyan','bg-cyan-500/10');
+    });
+    btn.classList.add('border-brand-cyan','bg-cyan-500/10');
+  }
+
+  function submitDaily(){
+    if(!selectedOpt){
+      alert('请先选择一个选项');
+      return;
+    }
+    const ok = selectedOpt === CORRECT_OPT;
+    const resultEl = document.getElementById('daily-result');
+    if(ok){
+      resultEl.className = 'p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-sm';
+      resultEl.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-brand-emerald text-lg">✓</span>
+          <span class="font-semibold text-brand-emerald">回答正确！答案 ${CORRECT_OPT}</span>
+        </div>
+        <div class="text-xs text-gray-300">用时 1 分 42 秒 · 同题正确率 58%</div>`;
+    } else {
+      resultEl.className = 'p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-sm';
+      resultEl.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-brand-rose text-lg">✗</span>
+          <span class="font-semibold text-brand-rose">答错了！你选 ${selectedOpt}，正确答案 ${CORRECT_OPT}</span>
+        </div>
+        <div class="text-xs text-gray-300">别灰心，看看解析把它吃透 💪</div>`;
+      // 高亮正确选项
+      document.querySelectorAll('.opt-btn').forEach(b=>{
+        const letter = b.getAttribute('onclick').match(/'([A-D])'/)[1];
+        if(letter === CORRECT_OPT){
+          b.classList.add('border-emerald-500','bg-emerald-500/10');
+        } else if(letter === selectedOpt){
+          b.classList.add('border-rose-500','bg-rose-500/10');
+        }
+      });
+    }
+    document.getElementById('daily-explain').classList.remove('hidden');
+  }
+
+  // Chart.js 通用
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.borderColor = 'rgba(99,102,241,0.15)';
+  Chart.defaults.font.family = '"PingFang SC","Microsoft YaHei",sans-serif';
+
+  // 雷达图
+  new Chart(document.getElementById('radar'), {
+    type: 'radar',
+    data: {
+      labels: ['极限连续','导数微分','积分学','级数','多元函数','微分方程'],
+      datasets: [
+        {
+          label: '高数',
+          data: [85, 78, 72, 45, 60, 68],
+          borderColor: '#22d3ee',
+          backgroundColor: 'rgba(34,211,238,0.18)',
+          pointBackgroundColor: '#22d3ee',
+          borderWidth: 1.5,
+        },
+        {
+          label: '线代',
+          data: [70, 55, 62, 75, 50, 58],
+          borderColor: '#a78bfa',
+          backgroundColor: 'rgba(167,139,250,0.15)',
+          pointBackgroundColor: '#a78bfa',
+          borderWidth: 1.5,
+        },
+        {
+          label: '概率',
+          data: [80, 65, 40, 55, 48, 38],
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.15)',
+          pointBackgroundColor: '#fbbf24',
+          borderWidth: 1.5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, backdropColor: 'transparent', font:{size:10} },
+          grid: { color: 'rgba(99,102,241,0.18)' },
+          angleLines: { color: 'rgba(99,102,241,0.18)' },
+          pointLabels: { color: '#cbd5e1', font:{size:11} },
+        }
+      }
+    }
+  });
+
+  // 本周柱状图
+  new Chart(document.getElementById('weekBar'), {
+    type: 'bar',
+    data: {
+      labels: ['一','二','三','四','五','六','日'],
+      datasets: [{
+        label: '小时',
+        data: [3.2, 4.1, 2.8, 3.5, 4.0, 5.2, 5.7],
+        backgroundColor: (ctx)=>{
+          const i = ctx.dataIndex;
+          const c = ['#22d3ee','#6366f1','#a78bfa','#f472b6','#fbbf24','#34d399','#22d3ee'];
+          return c[i] + 'cc';
+        },
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { grid:{ display:false }, ticks:{ color:'#94a3b8', font:{size:10} } },
+        y: { grid:{ color:'rgba(99,102,241,0.1)' }, ticks:{ color:'#94a3b8', font:{size:10}, callback:v=>v+'h' } }
+      }
+    }
+  });
+</script>
+</body>
+</html>
